@@ -1,0 +1,147 @@
+---
+title: "Assignment_2_ Farris_wheel"
+author: "Ethan McNemar"
+date: "`r Sys.Date()`"
+output:
+  pdf_document: default
+  html_document: default
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(fig.align = 'center', echo = FALSE)
+```
+```{r data, include = FALSE}
+library(tidyverse)
+library(dplyr)
+library(rmarkdown)
+library(tidytuesdayR)
+library(ggplot2)
+library(knitr)
+library(tidytuesdayR)
+daily_hour_minutes <- 1440
+wheels <- readr::read_csv("https://raw.githubusercontent.com/rfordatascience/tidytuesday/master/data/2022/2022-08-09/wheels.csv")
+
+```
+
+
+# Ferris Wheels - The Bigger the Better?
+Since first introduced in the 1893 World's World's Columbian Exposition in Chicago, the Ferris wheel has become synonymous with amusement parks industry. The modern Ferris wheel has evolved well beyond it's 1893 grandfather. Coming in several different shapes, sizes, capacities, and features. Some being able to be pulled by a trailer (which was important for traveling circuses) to permanent fixtures in amusement parks, and the communities they serve. Some becoming giant monoliths of their own right, and popular tourist attractions. This report below explores datapoints concerning some of the most popular Ferris wheels, 
+
+## The Questions
+Scenario, you and your child "Stata" are walking at your local state fair, and "Stata" points at the Ferris wheel and asks you the following questions.
+
+Daddy/Mommy....
+
+1. What is the biggest Ferris wheel?
+2. What is Ferris wheel that can hold the most amount of patrons in a day? *(assuming running 24 hours @ full capacity)*
+3. Is the biggest Ferris wheels,the same one accommodating the most people a day? What is the relationship?
+
+You being the data science super parent, you decide to research Stata's question using the below TidyTuesday dataset (tidytuesdayR::tt_load('2022-08-09')) using R with the dyplr package. 
+
+## The Source
+
+
+This dataset is part of the TidyTuesday data set release on 8-09-2022. TidyTuesday is an R community that published community submitted R data every Tuesday. For a link to the datset see: <https://github.com/rfordatascience/tidytuesday/tree/10ecc76b4731ce3803efaafd7c3deb00b0064030/data/2022/2022-08-09>.
+
+# What is the Biggest Ferris Wheel?
+The `wheels` data set gives us information on 73 popular Ferris wheels across the world as of 2015. Information listed for each ferris wheel includes the name, height, diameter, seating capacity, and number of cabins. Stata would like to know what is the "Biggest" Ferris wheel is. We do this by creating a new variable `height_diameter_rank` that is the sum of the height and diameter. 
+
+## Dataset - Wheel_height_diameter
+```{r wheel_height_diameter}
+## Does size matter, when your having fun?
+## Question 1 What are the biggest farris wheels?
+## Question 2 what is Ferris wheel that can hold the most amount of patrons in a day? (assuming running 24 hours @ full capacity)
+## Question 3 Are the biggest farris wheels,  the same ones accommodating more people a day? 
+## Q1 table then graph of Ferris wheels by Height diameter
+wheel_height_diam<-wheels %>%
+  select(name, seating_capacity, number_of_cabins, height, diameter)%>%
+  group_by(name, height, diameter)%>%
+  mutate(height_diameter_rank = sum(height,diameter))%>%
+  arrange(desc(height_diameter_rank))%>%
+  top_n(1,height_diameter_rank)
+```
+```{r wheel_height_diameter2}
+kable(wheel_height_diam, col.names = c("name","seating_capacity", "number_of_cabins", "height", "diameter", "height_diameter_rank"), align = "cc", max.rows = 10 , caption = "Table 1.1 The Total Height + Diameter of each Ferris Wheel")
+
+```
+## Solution
+
+The above table has been created to be expressed in ascending order of `height_diameter_rank`
+
+According to the table our biggest Ferris wheel is the **Golden Gate Flyer**. 
+
+## Ferris Wheels plotted by Height and Diameter
+
+plotting this out, you can see the golden gate flyer on the top rigth hand corner of figure 1.1.
+
+```{r wheels_height_diam, echo=FALSE, out.width = '95%', fig.cap = 'Figure 1.1 Comparing Height and Diameter of Ferris Wheels.'}
+wheel_height_diam<-wheels %>%
+  select(name, seating_capacity, number_of_cabins, height, diameter)%>%
+  group_by(name, height, diameter)%>%
+  mutate(height_diamter_rank = sum(height,diameter))%>%
+  arrange(desc(height_diamter_rank))%>%
+  top_n(1,height_diamter_rank)
+ggplot(wheels,aes(x=height,y=diameter, color = number_of_cabins)) + geom_point() + ggtitle("Comparing Height and Diameter of Ferris Wheels")
+```
+# What is the Ferris Wheel that can hold the most amount of patrons in a day?
+In this scenario we are going to assume that every Ferris wheel is going to run continuously, without delay, for a full 24 hours. We have to acknowledge that there is a `wheels$hourly_capacity` field in the dataset, but we are going to ignore that, since several observations in this `hourly_capacity` field are missing aka "NA". 
+
+So, to substitute we will be creating our own fields `est_passangers_per_day` which is *product* of the `seating capacity` and `rides_per_day` fields. 
+
+The `rides per day field`, is another field we create by $`total.min.24.hours` / `ride.duration.minutes`$
+giving us the maximum number of rides that each Ferris wheel could mathematically give us in a 24 hour period.
+
+## Dataset - Ferris Wheels ordered by estimated max # of passangers a day.
+
+```{r capacity_24h_calc}
+Capacity_24h<-wheels %>%
+  select(name, seating_capacity, ride_duration_minutes)%>%
+  mutate(rides_per_day = daily_hour_minutes/ride_duration_minutes)%>%
+  mutate(est_passangers_per_day = seating_capacity*rides_per_day)%>%
+  arrange(desc(est_passangers_per_day))
+## daily_hour_minutes variable in r data section @ top
+```
+```{r capacity_24h_table}
+kable(Capacity_24h, col.names = c("name","seating_capacity", "ride_duration_minutes", "rides_per_day", "est_passangers_per_day"), align = "cc", max.rows = 10 , caption = "Table 1.2 Max estimated passangers of each Ferris Wheel")
+
+```
+## Solution
+
+Table 1.2 tells us that the Ferris Wheel that can accommodate the most passengers in a day is the **Beijing Great Wheel**. This was actually second largest Ferris Wheel, on Table 1.1;
+
+# Is the biggest Ferris wheels,the same one accommodating the most people a day? What is the relationship?
+
+Notice on Table 1.2 that the **Golden Gate Flyer** which was largest Ferris Wheel, as shown on Table 1.1 is actually #4 on this list. 
+
+There is a difference of **71,040 est_passengers_per_day** between the Beijing Great Wheel and the Golden Gate Flyer
+
+If it's not just about being the biggest, what other factors are in play? Let's look at ride duration and the total # of cabins..
+
+```{r wheel_final calc}
+wheel_final <- wheel_height_diam %>%
+  right_join(Capacity_24h)%>%
+  arrange(desc(est_passangers_per_day))
+```
+## Dataset - Ferris Wheels ordered by `height_diameter_rank` & `est_passengers_per_day`
+```{r wheel_final table}
+kable(wheel_final, col.names = c("name","seating_capacity", "number_of_cabins","height","diameter","height_diameter_rank","ride_duration_minutes","rides_oer_day","est_passangers_per_day"), align = "cc", max.rows = 10 , caption = "Table 1.3 comparing height_diameter to est passangers per day")
+```
+## Ferris Wheels plotted by `height_diameter_rank` & `est_passengers_per_day` sub_catagorized by Ride duration & # of cabins
+```{r wheel_final_graph, echo=FALSE, out.width = '95%', fig.cap = 'Figure 1.2 Comparing Ferris Wheel Passanger volume to size of the wheel.'}
+finalplot <- ggplot(wheel_final, aes(x=est_passangers_per_day, y= height_diamter_rank, color = ride_duration_minutes, size = number_of_cabins)) + geom_point() + scale_x_binned(name = waiver(), n.breaks = 10, nice.breaks = TRUE, breaks = waiver(), labels = waiver(), limits = NULL, expand = waiver(), na.value = NA_real_, right = TRUE, show.limits = FALSE,trans = "identity",guide = waiver(),position = "bottom") + scale_color_viridis_b() + ggtitle("Comparing Ferris Wheel Passanger volume to size of the wheel")
+finalplot
+```
+## Solution - Final
+Reviewing Figure 1.2 we can see that for the most part, that several of the Ferris wheels that can accommodate 25000+ passengers actually have a 'height_diameter_rank' of 500+ units.
+
+We can infer that there is a positive correlate relationship between `height_diameter_rank` and `est_passangers_per_day`. We could infer there may be a diminishing return on the far past the 50,000 passengers on the X axis, but in my opinion there are not enough data points to make that assumption at this point. 
+
+Also, with the exception of the Golden Gate Flyer (identified as the largest plot on the y axis) and one other sample (the High Roller) the majority of Ferris wheels that can accommodate a daily passenger volume of 40,000 + passengers, have a ride duration of 20 minutes or less. 
+
+This expresses that there is more than likely a positive correlation between `ride_duration_minutes` and `est_passangers_per_day`
+
+While the **Golden Gate Flyer** is byfar our largest Farris wheel, We can infer from this, that the reason the **Beijing Great Wheel** can accommodate more passengers than the Golden Gate Flyer is because it's riders have a shorter rider duration, and ergo, it can churn out more passengers.
+
+This means that bigger, does not always mean its better. 
+
+-----------------------
